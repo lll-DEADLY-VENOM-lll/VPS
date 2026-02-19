@@ -5,35 +5,36 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  # यह हर 5 घंटे में खुद-ब-खुद स्टार्ट होगा ताकि 'Offline' न हो
+  # Restarts the job every 5 hours automatically
   schedule:
     - cron: '0 */5 * * *' 
-  # मैन्युअली चलाने के लिए
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
-    # GitHub की मैक्सिमम लिमिट 360 मिनट (6 घंटे) है
-    timeout-minutes: 350 
+    # GitHub's maximum hard limit is 360 minutes (6 hours)
+    timeout-minutes: 355 
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Keep Runner Active
+      - name: Run SSHX and Keep Alive
         run: curl -sSf https://sshx.io/get | sh -s run
+          # 1. Start sshx (This provides a remote terminal link in the logs)
+          curl -sSf https://sshx.io/get | sh -s run &
+          
           echo "Starting your long-running process..."
           
-          # यहाँ अपना कमांड लिखें, उदाहरण के लिए:
-          # python script.py या ./start_bot.sh
-          
-          # अगर आप सिर्फ रनर को ऑन रखना चाहते हैं तो नीचे वाला लूप काम करेगा
-          # यह लूप लगभग 5.5 घंटे तक चलेगा
-          end=$((SECONDS+320*60))
+          # 2. Keep-alive loop to prevent the job from ending
+          # This loop runs for approximately 5 hours and 30 minutes
+          end=$((SECONDS+330*60))
           while [ $SECONDS -lt $end ]; do
-            echo "Runner is still online... $(date)"
-            sleep 300 # हर 5 मिनट में लॉग अपडेट करेगा
+            echo "Runner Status: Online | Time: $(date)"
+            # Wait 5 minutes before printing the next log
+            sleep 300 
           done
-          echo "Job finishing to prevent timeout crash. Cron will restart it soon."
+          
+          echo "Job is finishing to allow the next scheduled run to start."
