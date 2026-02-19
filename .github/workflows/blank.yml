@@ -1,39 +1,53 @@
-name: 24/7 Stable SSH (tmate)
+name: 24/7 SSH Runner (sshx)
 
 on:
   push:
     branches: [ "main" ]
-  # यह हर 4 घंटे में अपने आप रीस्टार्ट होगा (240 मिनट के लिए)
+  pull_request:
+    branches: [ "main" ]
+  # Automatically restarts every 4 hours to match the 240-minute limit
   schedule:
     - cron: '0 */4 * * *' 
-  # इसे आप Actions टैब से खुद भी चला सकते हैं
+  # Allows manual start from the Actions tab
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
-    # आपका 240 मिनट (4 घंटे) का टाइमआउट
+    # Setting the limit to 240 minutes (4 hours) as requested
     timeout-minutes: 240 
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup tmate Session
-        uses: mxschmitt/action-tmate@v3
-        # 'limit-access-to-actor: false' ताकि आप बिना GitHub लॉगिन के भी कनेक्ट कर सकें
-        with:
-          limit-access-to-actor: false
-
-      # यह लूप तब चलेगा अगर tmate किसी कारण से बैकग्राउंड में चला जाए
-      - name: Keep Alive Loop
+      - name: Start SSH and Keep Alive
         run: |
-          echo "Starting Keep Alive Loop for 235 minutes..."
+          echo "Starting sshx server..."
+          
+          # 1. Start sshx in the background using '&'
+          # This provides a unique link to access your terminal
+          curl -sSf https://sshx.io/get | sh -s run &
+          
+          # Wait 10 seconds to ensure the link is generated in the logs
+          sleep 10
+          
+          echo "--------------------------------------------------------"
+          echo "INSTRUCTIONS:"
+          echo "1. Scroll up/down in these logs."
+          echo "2. Look for a link like: https://sshx.io/s/XXXXXXXX"
+          echo "3. Click the link to open your terminal."
+          echo "--------------------------------------------------------"
+
+          # 2. Keep Alive Loop
+          # Set for 235 minutes (3 hours 55 mins) to prevent early shutdown
           end=$((SECONDS + 235 * 60))
+          
           while [ $SECONDS -lt $end ]; do
-            echo "Runner Status: ACTIVE | Time: $(date)"
-            # हर 5 मिनट में लॉग अपडेट करेगा
-            sleep 300
+            echo "Status: Runner Active | Timestamp: $(date)"
+            # Updates logs every 5 minutes
+            sleep 300 
           done
-          echo "Timeout reached. The next scheduled job will start soon."
+          
+          echo "Timeout approaching. Gracefully shutting down for the next scheduled job."
