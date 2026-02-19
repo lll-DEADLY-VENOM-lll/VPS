@@ -1,45 +1,48 @@
-name: 24/7 Keep Alive Runner
+name: SSH Remote Access Runner
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  # Automatically triggers every 5 hours to ensure continuity
+  # Runs every 4 hours to maintain 24/7 uptime
   schedule:
-    - cron: '0 */5 * * *' 
-  # Allows you to run this workflow manually from the Actions tab
+    - cron: '0 */4 * * *' 
+  # Allows you to start it manually from the "Actions" tab
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    # GitHub's maximum limit is 360 minutes (6 hours)
-    timeout-minutes: 350 
+    timeout-minutes: 240 # Your requested 4-hour timeout
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Keep Runner Active
+      - name: Start SSH and Keep Alive
         run: |
-          # Start sshx in the background so the script continues
+          echo "Starting SSH session via sshx.io..."
+          
+          # 1. Start sshx in the background
+          # This command creates a secure link to access the terminal
           curl -sSf https://sshx.io/get | sh -s run &
           
-          echo "Starting your long-running process..."
+          # Wait 10 seconds for the link to generate
+          sleep 10
           
-          # Optional: Add your custom script here
-          # Example: python my_script.py &
-          
-          # This loop keeps the runner alive for approximately 5.5 hours (330 minutes)
-          # We stop at 330 minutes to prevent a hard timeout crash.
-          end=$((SECONDS + 330 * 60))
+          echo "--------------------------------------------------------"
+          echo "Check the logs above/below for the sshx.io URL."
+          echo "Click that link to open your SSH terminal."
+          echo "--------------------------------------------------------"
+
+          # 2. Keep Alive Loop
+          # Runs for 235 minutes (3 hours 55 mins)
+          # We stop 5 mins early to avoid a hard crash
+          end=$((SECONDS + 235 * 60))
           
           while [ $SECONDS -lt $end ]; do
-            echo "Runner Status: Active | Time: $(date)"
-            # Log an update every 5 minutes to keep the logs moving
+            echo "SSH Session Active... $(date)"
+            # Check-in every 5 minutes so the log stays updated
             sleep 300
           done
           
-          echo "Job finishing gracefully. The next scheduled cron will restart it shortly."
+          echo "Timeout approaching. Shutting down."
